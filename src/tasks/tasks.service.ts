@@ -1,48 +1,55 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Query } from '@nestjs/common';
 import { Task } from './entities/task.entity.js';
 import { CreateTaskDto } from './dto/createTaskDto.js';
 import { UpdateTaskDto } from './dto/updateTaskDto.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { PaginationDto } from './dto/pagination.dto.js';
 
 @Injectable()
 export class TasksService {
-  private tasks: Task[] = [
-    {
-      id: 1,
-      name: 'Comprar pão',
-      description: 'Comprar pão na padaria',
-      completed: false,
-    },
-  ];
+  constructor(private prisma: PrismaService) {}
 
-  FindAllTasks() {
-    return this.tasks;
+  async FindAllTasks(@Query() params: PaginationDto) {
+    const { limit = 10, offset = 0 } = params;
+    const allTasks = await this.prisma.task.findMany({
+      take: limit,
+      skip: offset,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+    return allTasks;
   }
 
-  FindOneTask(id: string) {
-    const task = this.tasks.find((task) => task.id === Number(id));
+  async FindOneTask(id: number) {
+    const task = await this.prisma.task.findUnique({
+      where: { id },
+    });
     if (!task) throw new BadRequestException('Tarefa não encontrada');
     return task;
   }
 
-  create(body: CreateTaskDto) {
-    const newId = this.tasks.length + 1;
-    const task = { id: newId, ...body, completed: false };
-    this.tasks.push(task);
+  async create(body: CreateTaskDto) {
+    const task: Task = await this.prisma.task.create({
+      data: body,
+    });
     return task;
   }
 
-  delete(id: string) {
-    const taskDelete = this.tasks.filter((task) => task.id !== Number(id));
-    if (taskDelete.length === this.tasks.length)
-      throw new BadRequestException('Tarefa não encontrada');
-    this.tasks = taskDelete;
-    return this.tasks;
+  async delete(id: number) {
+    const task = await this.prisma.task.delete({
+      where: { id },
+    });
+    if (!task) throw new BadRequestException('Tarefa não encontrada');
+    return task;
   }
 
-  update(id: string, body: UpdateTaskDto) {
-    const taskIndex = this.tasks.findIndex((task) => task.id === Number(id));
-    if (taskIndex < 0) throw new BadRequestException('Tarefa não encontrada');
-    this.tasks[taskIndex] = { ...this.tasks[taskIndex], ...body };
-    return this.tasks[taskIndex];
+  async update(id: number, body: UpdateTaskDto) {
+    const task = await this.prisma.task.update({
+      where: { id },
+      data: body,
+    });
+    if (!task) throw new BadRequestException('Tarefa não encontrada');
+    return task;
   }
 }
