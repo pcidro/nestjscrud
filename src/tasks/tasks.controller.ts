@@ -33,10 +33,13 @@ export class TasksController {
     return this.tasksService.FindOneTask(id);
   }
 
-  @Post()
+  @Post(':userId')
   @UseInterceptors(BodyCreateTaskInterceptor)
-  createTask(@Body() body: CreateTaskDto) {
-    return this.tasksService.create(body);
+  createTask(
+    @Param('userId', ParseIntPipe) userId: string,
+    @Body() body: CreateTaskDto,
+  ) {
+    return this.tasksService.create(body, userId);
   }
 
   @Delete(':id')

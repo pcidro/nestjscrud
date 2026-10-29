@@ -29,11 +29,18 @@ export class TasksService {
     return task;
   }
 
-  async create(body: CreateTaskDto) {
-    const task: Task = await this.prisma.task.create({
-      data: body,
+  async create(createTaskDto: CreateTaskDto, userId: string) {
+    return this.prisma.task.create({
+      data: {
+        name: createTaskDto.name,
+        description: createTaskDto.description,
+        user: {
+          connect: {
+            id: Number(userId),
+          },
+        },
+      },
     });
-    return task;
   }
 
   async delete(id: number) {
