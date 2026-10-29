@@ -39,7 +39,7 @@ export class TasksController {
     @Param('userId', ParseIntPipe) userId: string,
     @Body() body: CreateTaskDto,
   ) {
-    return this.tasksService.create(body, userId);
+    return this.tasksService.create(body);
   }
 
   @Delete(':id')

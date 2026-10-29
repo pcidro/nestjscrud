@@ -29,18 +29,22 @@ export class TasksService {
     return task;
   }
 
-  async create(createTaskDto: CreateTaskDto, userId: string) {
-    return this.prisma.task.create({
-      data: {
-        name: createTaskDto.name,
-        description: createTaskDto.description,
-        user: {
-          connect: {
-            id: Number(userId),
-          },
+  async create(createTaskDto: CreateTaskDto) {
+    try {
+      const newTask = await this.prisma.task.create({
+        data: {
+          name: createTaskDto.name,
+          description: createTaskDto.description,
+          completed: false,
+          userId: createTaskDto.userId,
         },
-      },
-    });
+      });
+      return newTask;
+    } catch (error) {
+      console.log(error);
+
+      throw new BadRequestException('Erro ao criar tarefa');
+    }
   }
 
   async delete(id: number) {
