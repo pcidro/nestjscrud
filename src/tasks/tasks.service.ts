@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Query,
+} from '@nestjs/common';
 import { Task } from './entities/task.entity.js';
 import { CreateTaskDto } from './dto/createTaskDto.js';
 import { UpdateTaskDto } from './dto/updateTaskDto.js';
@@ -25,13 +31,14 @@ export class TasksService {
     const task = await this.prisma.task.findUnique({
       where: { id },
     });
-    if (!task) throw new BadRequestException('Tarefa não encontrada');
+    if (!task)
+      throw new HttpException('Tarefa não encontrada', HttpStatus.NOT_FOUND);
     return task;
   }
 
   async create(createTaskDto: CreateTaskDto) {
     try {
-      const newTask = await this.prisma.task.create({
+      const newTask: Task = await this.prisma.task.create({
         data: {
           name: createTaskDto.name,
           description: createTaskDto.description,
