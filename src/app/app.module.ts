@@ -11,8 +11,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { LoggerMiddleware } from '../middlewares/logger.middleware.js';
-import { APP_GUARD } from '@nestjs/core';
-import { AuthAdminGuard } from '../guards/authGuard.js';
+import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
   imports: [
@@ -20,6 +19,7 @@ import { AuthAdminGuard } from '../guards/authGuard.js';
     PrismaModule,
     TasksModule,
     UsersModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
