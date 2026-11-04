@@ -2,9 +2,14 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateUserDto } from './dto/createUserDto.js';
 import { updateUserDto } from './dto/updateUserDto.js';
+import { HashingService } from '../auth/hash/hashing.service.js';
 
 @Injectable()
 export class UsersService {
+  constructor(
+    private prisma: PrismaService,
+    private hashService: HashingService,
+  ) {}
   async delete(id: number) {
     const user = await this.prisma.user.findUnique({
       where: {
@@ -25,15 +30,15 @@ export class UsersService {
       },
     });
   }
-  constructor(private prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
     try {
+      const passwordHash = await this.hashService.hash(createUserDto.password);
       return await this.prisma.user.create({
         data: {
           name: createUserDto.name,
           email: createUserDto.email,
-          passwordHash: createUserDto.password,
+          passwordHash,
         },
         select: {
           id: true,
