@@ -81,14 +81,22 @@ export class UsersService {
     return user;
   }
   async update(id: number, body: updateUserDto) {
+    const dataUser: { name?: string; passwordHash?: string; email?: string } = {
+      name: body.name ? body.name : undefined,
+      email: body.email ? body.email : undefined,
+    };
+    if (body.password) {
+      const passwordHash = await this.hashService.hash(body.password);
+      dataUser['passwordHash'] = passwordHash;
+    }
     return await this.prisma.user.update({
       where: {
         id,
       },
       data: {
-        name: body.name ? body.name : undefined,
-        email: body.email ? body.email : undefined,
-        passwordHash: body.password ? body.password : undefined,
+        name: dataUser.name,
+        email: dataUser.email,
+        passwordHash: dataUser.passwordHash ? dataUser.passwordHash : undefined,
       },
       select: {
         id: true,
