@@ -6,10 +6,15 @@ import { BCryptService } from './hash/bcrypt.service.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { ConfigModule } from '@nestjs/config';
 import jwtConfig from './config/jwt.config.js';
+import { JwtModule } from '@nestjs/jwt';
 
 @Global()
 @Module({
-  imports: [PrismaModule, ConfigModule.forFeature(jwtConfig)],
+  imports: [
+    PrismaModule,
+    ConfigModule.forFeature(jwtConfig),
+    JwtModule.registerAsync(jwtConfig.asProvider()),
+  ],
   controllers: [AuthController],
   providers: [
     AuthService,
