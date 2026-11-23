@@ -1,8 +1,21 @@
-import { Body, Controller, Delete, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+
 import { UsersService } from './users.service.js';
-import { Get, Param, ParseIntPipe } from '@nestjs/common';
 import { CreateUserDto } from './dto/createUserDto.js';
 import { updateUserDto } from './dto/updateUserDto.js';
+import { TokenAuthGuard } from '../auth/authguards/authTokenGuard.js';
+import { TokenPayloadParam } from '../auth/param/tokenParam.js';
+import { payLoadTokenDto } from '../auth/dto/payload.dto.js';
 
 @Controller('users')
 export class UsersController {
@@ -18,21 +31,27 @@ export class UsersController {
     return this.usersService.findAllUsers();
   }
 
+  @UseGuards(TokenAuthGuard)
   @Patch(':id')
   updateUser(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: updateUserDto,
+    @TokenPayloadParam() tokenPayload: payLoadTokenDto,
   ) {
-    return this.usersService.update(id, body);
+    return this.usersService.update(id, body, tokenPayload);
   }
 
+  @UseGuards(TokenAuthGuard)
   @Delete(':id')
-  deleteUser(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.delete(id);
+  deleteUser(
+    @Param('id', ParseIntPipe) id: number,
+    @TokenPayloadParam() tokenPayload: payLoadTokenDto,
+  ) {
+    return this.usersService.delete(id, tokenPayload);
   }
 
   @Post()
-  CreateUser(@Body() body: CreateUserDto) {
+  createUser(@Body() body: CreateUserDto) {
     return this.usersService.create(body);
   }
 }
