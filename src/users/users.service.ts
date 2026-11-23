@@ -1,8 +1,15 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  HttpException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateUserDto } from './dto/createUserDto.js';
 import { updateUserDto } from './dto/updateUserDto.js';
 import { HashingService } from '../auth/hash/hashing.service.js';
+import { payLoadTokenDto } from '../auth/dto/payload.dto.js';
 
 @Injectable()
 export class UsersService {
@@ -10,30 +17,53 @@ export class UsersService {
     private prisma: PrismaService,
     private hashService: HashingService,
   ) {}
-  async delete(id: number) {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id,
-      },
-    });
 
-    if (!user) throw new BadRequestException('Usuário não encontrado');
+  private handleError(error: unknown): never {
+    if (error instanceof HttpException) {
+      throw error;
+    }
 
-    return await this.prisma.user.delete({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      },
-    });
+    console.error(error);
+    throw new InternalServerErrorException(
+      'Erro interno ao processar solicitação',
+    );
+  }
+
+  private validateUser(id: number, tokenPayload: payLoadTokenDto) {
+    if (id !== tokenPayload.id) {
+      throw new ForbiddenException('Usuário não autorizado');
+    }
+  }
+
+  async delete(id: number, tokenPayload: payLoadTokenDto) {
+    try {
+      this.validateUser(id, tokenPayload);
+
+      const user = await this.prisma.user.findUnique({
+        where: { id },
+      });
+
+      if (!user) {
+        throw new BadRequestException('Usuário não encontrado');
+      }
+
+      return await this.prisma.user.delete({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      });
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   async create(createUserDto: CreateUserDto) {
     try {
       const passwordHash = await this.hashService.hash(createUserDto.password);
+
       return await this.prisma.user.create({
         data: {
           name: createUserDto.name,
@@ -47,62 +77,83 @@ export class UsersService {
         },
       });
     } catch (error) {
-      console.error(error);
-      throw new BadRequestException('Erro ao criar usuário');
+      this.handleError(error);
     }
   }
 
   async findAllUsers() {
-    return this.prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        tasks: true,
-      },
-    });
+    try {
+      return await this.prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          tasks: true,
+        },
+      });
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 
   async findOneUser(id: number) {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        tasks: true,
-      },
-    });
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          tasks: true,
+        },
+      });
 
-    if (!user) throw new BadRequestException('Usuário não encontrado');
+      if (!user) {
+        throw new BadRequestException('Usuário não encontrado');
+      }
 
-    return user;
-  }
-  async update(id: number, body: updateUserDto) {
-    const dataUser: { name?: string; passwordHash?: string; email?: string } = {
-      name: body.name ? body.name : undefined,
-      email: body.email ? body.email : undefined,
-    };
-    if (body.password) {
-      const passwordHash = await this.hashService.hash(body.password);
-      dataUser['passwordHash'] = passwordHash;
+      return user;
+    } catch (error) {
+      this.handleError(error);
     }
-    return await this.prisma.user.update({
-      where: {
-        id,
-      },
-      data: {
-        name: dataUser.name,
-        email: dataUser.email,
-        passwordHash: dataUser.passwordHash ? dataUser.passwordHash : undefined,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      },
-    });
+  }
+
+  async update(id: number, body: updateUserDto, tokenPayload: payLoadTokenDto) {
+    try {
+      this.validateUser(id, tokenPayload);
+
+      const user = await this.prisma.user.findUnique({
+        where: { id },
+      });
+
+      if (!user) {
+        throw new BadRequestException('Usuário não encontrado');
+      }
+
+      const dataUser: {
+        name?: string;
+        passwordHash?: string;
+        email?: string;
+      } = {
+        name: body.name || undefined,
+        email: body.email || undefined,
+      };
+
+      if (body.password) {
+        dataUser.passwordHash = await this.hashService.hash(body.password);
+      }
+
+      return await this.prisma.user.update({
+        where: { id },
+        data: dataUser,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      });
+    } catch (error) {
+      this.handleError(error);
+    }
   }
 }
