@@ -6,4 +6,5 @@ export class payLoadTokenDto {
   exp: number;
   aud: string;
   iss: string;
+  sub: number;
 }
