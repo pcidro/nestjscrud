@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
+  NotFoundException,
   Query,
 } from '@nestjs/common';
 import { Task } from './entities/task.entity.js';
@@ -10,6 +12,7 @@ import { CreateTaskDto } from './dto/createTaskDto.js';
 import { UpdateTaskDto } from './dto/updateTaskDto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { PaginationDto } from './dto/pagination.dto.js';
+import { payLoadTokenDto } from '../auth/dto/payload.dto.js';
 
 @Injectable()
 export class TasksService {
@@ -36,14 +39,14 @@ export class TasksService {
     return task;
   }
 
-  async create(createTaskDto: CreateTaskDto) {
+  async create(createTaskDto: CreateTaskDto, tokenPayload: payLoadTokenDto) {
     try {
       const newTask: Task = await this.prisma.task.create({
         data: {
           name: createTaskDto.name,
           description: createTaskDto.description,
           completed: false,
-          userId: createTaskDto.userId,
+          userId: tokenPayload.sub,
         },
       });
       return newTask;
@@ -54,20 +57,40 @@ export class TasksService {
     }
   }
 
-  async delete(id: number) {
-    const task = await this.prisma.task.delete({
+  async delete(id: number, tokenPayload: payLoadTokenDto) {
+    const task = await this.prisma.task.findUnique({
       where: { id },
     });
-    if (!task) throw new BadRequestException('Tarefa não encontrada');
-    return task;
+
+    if (!task) throw new NotFoundException('Tarefa não encontrada');
+
+    if (task.userId !== tokenPayload.sub)
+      throw new ForbiddenException('Você não pode excluir esta tarefa');
+
+    return await this.prisma.task.delete({
+      where: {
+        id,
+        userId: tokenPayload.sub,
+      },
+    });
   }
 
-  async update(id: number, body: UpdateTaskDto) {
-    const task = await this.prisma.task.update({
+  async update(id: number, body: UpdateTaskDto, tokenPayload: payLoadTokenDto) {
+    const task = await this.prisma.task.findUnique({
       where: { id },
+    });
+
+    if (!task) throw new NotFoundException('Tarefa não encontrada');
+
+    if (task.userId !== tokenPayload.sub)
+      throw new ForbiddenException('Você não pode atualizar esta tarefa');
+
+    return await this.prisma.task.update({
+      where: {
+        id,
+        userId: tokenPayload.sub,
+      },
       data: body,
     });
-    if (!task) throw new BadRequestException('Tarefa não encontrada');
-    return task;
   }
 }
